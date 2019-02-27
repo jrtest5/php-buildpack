@@ -1,6 +1,7 @@
 #!/bin/bash
 
 BUILD_DIR="$2"
+CACHE_DIR="$3"
 basedir="$( cd -P "$( dirname "$0" )" && pwd )"
 source $basedir/../bin/common.sh
 
@@ -29,19 +30,25 @@ function is_symfony3() {
 }
 
 function is_symfony4() {
-    test_symfony_flex "composer.lock"
+    test_symfony_flex "$BUILD_DIR/composer.lock"
 }
 
 function get_workdir() {
-    is_symfony2 && echo "app"
-    is_symfony3 && echo "var"
-    is_symfony4 && echo "var"
+    is_symfony4 && echo -n "var" && return
+    is_symfony3 && echo -n "var" && return
+    is_symfony2 && echo -n "app" && return
+}
+
+function get_logdir() {
+    is_symfony4 && echo -n "log" && return
+    is_symfony3 && echo -n "logs" && return
+    is_symfony2 && echo -n "logs" && return
 }
 
 function get_console() {
-    is_symfony2 && echo "app/console"
-    is_symfony3 && echo "bin/console"
-    is_symfony4 && echo "bin/console"
+    is_symfony4 && echo -n "bin/console" && return
+    is_symfony3 && echo -n "bin/console" && return
+    is_symfony2 && echo -n "app/console" && return
 }
 
 case "$1" in
@@ -59,7 +66,8 @@ case "$1" in
         ;;
     get-log-files)
         workdir=$(get_workdir)
-        echo "$workdir/logs/prod.log" "$workdir/logs/dev.log"
+        logdir=$(get_logdir)
+        echo "$workdir/$logdir/prod.log" "$workdir/$logdir/dev.log"
         ;;
     compile)
         echo "-----> Setting up symfony app"
@@ -70,8 +78,6 @@ case "$1" in
         fi
         ;;
     end)
-        BUILD_DIR="$1"
-        CACHE_DIR="$2"
         APP_DIR="/app"
 
         status "Warming up cache"
@@ -89,9 +95,11 @@ case "$1" in
           php $console cache:warmup --env=prod --no-debug | indent
         fi
 
-        status "Inplace replacment of $CACHE_DIR to $APP_DIR"
-        find $CACHE_DIR/$workdir/cache/prod -type f -exec sed -i "s@$CACHE_DIR@$APP_DIR@g" {} \; | indent
-        grep $CACHE_DIR/$workdir/cache/prod -r . && error "Could find some '$CACHE_DIR' :/ "
+        if [ -d "$CACHE_DIR/$workdir/cache/prod" ] ; then
+          status "Inplace replacment of $CACHE_DIR to $APP_DIR"
+          find $CACHE_DIR/$workdir/cache/prod -type f -exec sed -i "s@$CACHE_DIR@$APP_DIR@g" {} \; | indent
+          grep $CACHE_DIR/$workdir/cache/prod -r . && error "Could find some '$CACHE_DIR' :/ "
+        fi
 
         status "End"
         ;;
