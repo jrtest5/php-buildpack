@@ -4,6 +4,26 @@ set -e
 set -o pipefail
 shopt -s dotglob
 
+cat <<EOF
+[1m=============== UNSUPPORTED BRANCH ================[0m
+
+             [MANUAL ACTION REQUIRED]
+
+THIS BRANCH 'nonode' is now unsupported.
+
+Please use the 'master' branch and set the environment
+variable: 'PHP_BUILDPACK_NO_NODE=true' to have exactly
+the same behavior as this branch is providing.
+
+Update your '.buildpacks' or BUILDPACK_URL environment
+variable to remove the reference to '#nonode'
+
+Eventually, the brianch will be deleted and your
+builds well fail.
+
+[1m===========/!\\==========/!\\==========/!\\===========[0m
+EOF
+
 basedir="$( cd -P "$( dirname "$0" )" && pwd )"
 source "$basedir/../conf/buildpack.conf"
 source $basedir/common.sh
