@@ -122,6 +122,10 @@ function package_php_fpm_includes() {
   jq --raw-output ".extra.${composer_extra_key}[\"php-fpm-includes\"] // [] | .[]" < "$BUILD_DIR/composer.json"
 }
 
+function package_default_nginx_config() {
+  jq --raw-output ".extra.${composer_extra_key}[\"default-nginx-config\"] // true" < "$BUILD_DIR/composer.json"
+}
+
 function package_nginx_includes() {
   jq --raw-output ".extra.${composer_extra_key}[\"nginx-includes\"] // [] | .[]" < "$BUILD_DIR/composer.json"
 }
@@ -181,6 +185,7 @@ PHP_FPM_INCLUDES=
 PHP_FPM_EXTRA_CONFIG=
 COMPILE_CMD=
 NGINX_INCLUDES=
+DEFAULT_NGINX_CONFIG=
 ACCESS_LOG_FORMAT_COMPOSER_JSON=
 NEWRELIC_VERSION="${NEWRELIC_VERSION:=8.1.0.209}"
 LOG_FILES=( "/app/vendor/nginx/logs/access.log" "/app/vendor/nginx/logs/error.log" "/app/vendor/php/var/log/error.log" )
@@ -200,6 +205,7 @@ if [ -f "$BUILD_DIR/composer.json" ]; then
   PHP_FPM_INCLUDES=$(package_php_fpm_includes)
   COMPILE_CMD=$(package_compile_cmd)
   NGINX_INCLUDES=$(package_nginx_includes)
+  DEFAULT_NGINX_CONFIG=$(package_default_nginx_config)
   USER_LOG_FILES=$(package_log_files)
   ACCESS_LOG_FORMAT_COMPOSER_JSON=$(package_access_log_format)
 fi
@@ -397,6 +403,7 @@ done
 
 # Set APP_ENV to prod by default for symfony based framework.
 export APP_ENV="\${APP_ENV:-prod}"
+export DEFAULT_NGINX_CONFIG="\${DEFAULT_NGINX_CONFIG:-$DEFAULT_NGINX_CONFIG}"
 export DOCUMENT_ROOT="\${DOCUMENT_ROOT:-$DOCUMENT_ROOT}"
 export INDEX_DOCUMENT="\${INDEX_DOCUMENT:-$INDEX_DOCUMENT}"
 export NGINX_INCLUDES="\${NGINX_INCLUDES:-$NGINX_INCLUDES}"
@@ -409,7 +416,10 @@ if [ -n "\$NEW_RELIC_LICENSE_KEY" ]; then
 fi
 
 erb conf/nginx.conf.erb > /app/vendor/nginx/conf/nginx.conf
-erb conf/site.conf.erb > /app/vendor/nginx/conf/site.conf
+
+if [[ "\${DEFAULT_NGINX_CONFIG}" != "false" ]]; then
+  erb conf/site.conf.erb > /app/vendor/nginx/conf/site.conf
+fi
 
 if [[ -z \${WEB_CONCURRENCY:-} ]]; then
     ram="512M"
